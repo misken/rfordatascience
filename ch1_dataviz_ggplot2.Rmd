@@ -1,0 +1,186 @@
+---
+title: "Ch1 - Data Viz with ggplot2"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# Introduction
+
+Load `tidyverse` library. Install if needed.
+
+
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+```
+
+Remember, if needed, can always call a function within a specific package
+by using `package::function()`.
+
+# First Steps
+
+Do cars with large engines use more fuel than cars with small engines?
+
+* what does this relationship look like?
+* is it linear, nonlinear?
+
+## The `mpg` Data Frame
+
+We'll use the `mpg` dataset that comes with `ggplot2`.
+
+```{r}
+mpg
+```
+
+What kind of data structure is `mpg`?
+
+```{r}
+class(mpg)
+```
+
+For now, let's not worry about tibbles vs data frames. Let's just
+call this thing a data frame. It's a table of data with each observation
+in a row and each attribute in a column. Attributes have data types.
+
+```{r}
+str(mpg)
+```
+
+Learn more about this dataset.
+
+```{r}
+?mpg
+```
+
+## Creating a ggplot
+
+Let's scatter displacement (X axis) vs hwy (Y axis).
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy))
+```
+
+Clearly, highway mpg decreases as displacement increases. The decreases appears
+somewhat non-linear.
+
+Notice the structure of the `ggplot` command.
+
+* specify a dataset with `ggplot(data = mpg)`
+* add a layer containing the points through `geom_point(mapping = aes(x=displ, y=hwy))`
+* the `geom_point` layer provides a mapping between the variables and visual properties of the plot.
+* the `aes` stands for aesthetic and maps specific axes to variables
+
+## A graphing template
+
+We can make a general template that we can reuse.
+
+```{r eval=FALSE}
+ggplot(data = <DATA>) + 
+  geom_point(mapping = aes(<MAPPINGS>))
+             
+```
+## Exercises
+
+** Ex 1 **
+
+```{r}
+ggplot(data = mpg)
+```
+
+We get an empty graph "container".
+
+** Ex 2 **
+
+How many rows in `mtcars`?
+
+```{r}
+nrow(mtcars)
+```
+
+How many columns?
+
+```{r}
+ncol(mtcars)
+```
+
+We can confirm this using the `str` command.
+```{r}
+str(mtcars)
+```
+
+** Ex 3 **
+
+```{r}
+summary(mpg$drv)
+table(mpg$drv)
+```
+
+According to `?mpg`, `drv` uses "f = front-wheel drive, r = rear wheel drive, 4 = 4wd" as factor values.
+
+** Ex 4 **
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = cyl, y = hwy))
+             
+```
+
+
+Since `cyl` only takes on a few unique values, we get this "banding effect". Not surprisingly,
+there does seem to be a decrease in `hwy` as `cyl` increases since more cyclinders is likely associated
+with greater values of displacement. We can check that. 
+
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = cyl, y = displ))
+
+```
+
+
+# Aesthetic Mappings
+
+So far we mapped variables to positions in space via an x-y coordinate system. We can also map variables
+to other aesthetics such as color, shape and size. For example, `class` gives the "type" of car. Let's
+map it to color. When we do this, `ggplot2` automatically asigns colors to each unique value of 
+the `class` variable. What do you think would happen if you map color to a continuous variable?
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, colour = class))
+```
+
+Notice how the 2-seaters cluster. Your interpretation?
+
+Let's try transmission as the color.
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, colour = trans))
+```
+Hmm, not very enlightening.
+
+Now map class to size. You'll get a warning. What do you think it's telling you and why?
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, size = class))
+```
+
+Now map `class` to alpha (transparency).
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, alpha = class))
+```
+
+Try shape. Read the warning - it's important.
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, shape = class))
+```
+

@@ -773,3 +773,127 @@ bar + coord_polar()
 ```
 
 ### Exercises
+
+** Ex 1 **
+
+Turn a stacked bar chart into a pie chart. 
+
+First we need a single stacked bar (i.e. one x category value).
+
+```{r}
+gg_stckbar <- ggplot(data = diamonds) +
+  geom_bar(aes(x = factor(1), fill = clarity))
+
+gg_stckbar
+```
+
+```{r}
+gg_stckbar + coord_polar()
+```
+
+Not a pie chart. From `?coord_polar` we see that the argument `theta` specified whether
+the x or y variable should map to the angle in the coordinate system. For a pie we need
+to set `theta = "y"` (default is "x")
+
+```{r}
+gg_stckbar + coord_polar(theta = "y")
+```
+
+
+We haven't touched on it yet, but there's so much more that can be done
+with **ggplot2** in terms of plot styles.
+
+```{r}
+gg_stckbar + 
+  coord_polar(theta = "y") + 
+  scale_fill_brewer(palette="Blues") +
+  theme_minimal() +
+```
+
+
+** Ex 2 **
+
+What does `labs()` do? What about a graph title?
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, colour = class)) +
+  labs(x = "Engine displacement", y = "MPG (highway)") +
+  ggtitle("Engine displacement vs gas mileage") 
+  
+```
+
+Can also set title, subtitle and caption via `labs()`.
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, colour = class)) +
+  labs(x = "Engine displacement", 
+       y = "MPG (highway)",
+       title = "Engine displacement vs gas mileage",
+       subtitle = "Does car class matter?",
+       caption = "Source: See ?mpg"
+  )
+
+  
+```
+
+```{r}
+library(ggthemes)
+```
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, colour = class)) +
+  labs(x = "Engine displacement", 
+       y = "MPG (highway)",
+       title = "Engine displacement vs gas mileage",
+       subtitle = "Does car class matter?",
+       caption = "Source: See ?mpg"
+  ) +
+  theme_tufte()
+
+  
+```
+
+** Ex 3 **
+
+`coord_quickmap()` val `coord_map()`?
+
+From reading the help, `coord_quickmap()` relies on a "quick approximation" for 
+computing the map projection. the approximation works better near the equator
+according to the docs.
+
+```{r}
+nz_map +
+  coord_quickmap()
+```
+
+```{r}
+nz_map +
+  coord_map()
+```
+
+** Ex 4 **
+
+```{r}
+ggplot(data = mpg, aes(x = cty, y = hwy)) +
+  geom_point()
+```
+
+An *abline* gives a 45 degree reference line or Y=X.
+
+```{r}
+ggplot(data = mpg, aes(x = cty, y = hwy)) +
+  geom_point() +
+  geom_abline()
+```
+
+To ensure that units on both axes are the same size, we can use `coord_fixed()`.
+
+```{r}
+ggplot(data = mpg, aes(x = cty, y = hwy)) +
+  geom_point() +
+  geom_abline() +
+  coord_fixed()
+```

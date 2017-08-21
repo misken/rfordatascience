@@ -10,9 +10,813 @@ output:
 
 Load `tidyverse` library. Install if needed.
 
-
 ```{r}
-#install.packages("tidyverse")
 library(tidyverse)
 ```
+
+We'll use the New York City flight data (2013) dataset. You can load this
+dataset by loading the *nycflights13* package.
+
+```{r}
+##install.packages("nycflights13")
+library(nycflights13)
+```
+
+## nycflights13
+
+Check it out.
+
+```{r}
+flights
+```
+
+```{r}
+str(flights)
+```
+
+Like `mpg`, `flights` is a tibble - a data frame that's been "slightly tweaked to
+work better in the tidyverse". For now just note that when we display a tibble it only
+shows as many columns as will fit on the screen and that the data types are
+listed under each column name. We'll learn more about tibbles later. For now, it's a data frame.
+
+## dplyr basics
+
+The **dplyr** package focuses on data manipulation. It is used for many of the
+same things for which you might use SQL.
+
+* filter rows - `filter()`
+* select columns - `select()`
+* sort rows - `arrange()`
+* create new variables - `mutate()`
+* summarize data by one or more grouping variables - `summarize()`
+
+You can use these five "verb" functions with or without the `group_by()` function. These
+six functions provide the core data manipulation capabilities of **dplyr**. 
+
+HW created **dplyr** as the next incarnation of **plyr** (which HW also created). It
+can be quite illuminating to see how the same task is done in two different packages.
+To confuse things just a bit more, data summarization was doable in R long before
+**plyer** came along. You'll still see quite a bit of use of the *apply family of functions* (`apply`, `tapply`, `sapply`, and a few more). So, I'll throw in some
+apply examples as well. All of these tools are examples of what is known as the *split-apply-combine* approach to data summarization. HW has written a nice little
+paper on this: https://www.jstatsoft.org/article/view/v040i01/v40i01.pdf. Also,
+you can find a [nice tutorial at the Software Carpentry site on split-apply-combine](http://swcarpentry.github.io/r-novice-gapminder/12-plyr/) using
+the **plyr** package.
+
+The verb function in **dplyr** share some traits that make them very amenable to
+being chained together.
+
+* each takes a data frame as its first argument
+* the rest of the function arguments specify what's to be done
+* each returns a data frame
+
+They can be used in standard ways as functions but can also be chained together
+using the `%>% pipe operator from the **magrittr** package. We'll do it both
+ways and you can decide for yourself when to use which approach.
+
+# Filter rows with filter()
+
+Let's see all the flights on March 1st.
+
+```{r}
+filter(flights, month == 3, day == 1)
+```
+
+Notice that to check for equality we use `==` (just as in languages like Python
+and C). The other relational operators are `>`, `>=`, `<`, and `<=`. The
+not equals operator is `!=`. To combine logical conditions, "and" is `&` and "or" is `|` (the pipe). To negate something, use `!`. Passing multiple conditions separated by a comma (like in the example above) is equivalent to using `&`. In other words,
+comma separated arguments are treated like an "and".
+
+Find all flights in March or May.
+
+```{r}
+filter(flights, month == 3 | month == 5)
+```
+
+Find all flights in March and which were to DTW.
+
+```{r}
+filter(flights, month == 3 & dest == 'DTW')
+```
+
+Find all flights in March and which were to DTW or to ORD.
+
+```{r}
+filter(flights, month == 3 & (dest == 'DTW' | dest == 'ORD'))
+```
+
+The `filter()` function didn't change anything (**dplyr** functions never change
+the data frame used as input), it's just outputting the records that pass through
+the filter. To save the output, just assign it to a new variable.
+
+```{r}
+flights_0301 <- filter(flights, month == 3, day == 1)
+```
+
+When you do this, the records aren't displayed. To both save and display,
+wrap the statement in parens. I never knew that about R.
+
+```{r}
+(flights_0301 <- filter(flights, month == 3, day == 1))
+```
+
+You can also use `filter()` in a chained fashion.
+
+```{r}
+flights %>%
+  filter(month == 3, day == 1)
+```
+
+You could even do this.
+
+```{r}
+flights %>%
+  filter(month == 3) %>%
+  filter(day == 1)
+```
+
+A couple of "gotchas":
+
+* don't accidentally use `=` instead of `==`
+* don't do equality checks with floating point numbers (this is true in any language)
+
+```{r}
+(sqrt(2) ^ 2)
+```
+
+```{r}
+(sqrt(2) ^ 2) == 2
+```
+
+## The non-dplyr way
+
+With base R, you can filter rows of a data frame with a combination of 
+a *boolean mask* and good old fashioned selecting by index. I usually call
+this approach *boolean indexing*.
+
+```{r}
+flights[flights$month == 3 & flights$day == 1, ]
+```
+
+So, what is `flights$month == 3 & flights$day == 1`?
+
+```{r}
+flights$month == 3 & flights$day == 1
+```
+
+# Arrange rows with arrange()
+
+```{r}
+arrange(flights, year, month, day)
+```
+
+```{r}
+arrange(flights, desc(dep_delay))
+```
+
+Using chaining.
+
+```{r}
+flights %>%
+  arrange(desc(dep_delay))
+```
+
+# Select Columns with select()
+
+Often it's helpful to look at a subset of the columns in a data frame. This is 
+especially true when you have data frames with many variables. You can select
+columns by name either individually or as a range.
+
+```{r}
+# Select columns by name
+select(flights, year, month, day, dep_delay)
+```
+
+```{r}
+# Select columns by range and using chaining
+flights %>%
+  select(year:day)
+```
+
+```{r}
+# Select columns by range and using chaining
+flights %>%
+  select(year:day, dep_delay)
+```
+
+```{r}
+# Select columns except by range
+flights %>%
+  select(-(year:day))
+```
+
+To aid in column selection, there are a bunch of helper functions. For example,
+`starts_with("d")` would select all columns whose name starts with "d". See p53
+in RforDS.
+
+## Selecting columns the non-dplyr way
+
+```{r}
+flights[, c("year", "month", "day", "dep_delay")]
+```
+
+```{r}
+flights[, 1:5]
+```
+
+```{r}
+# Select flights in March and only the first 5 columns
+flights[flights$month == 3, 1:5]
+```
+
+Repeat using `dplyr`.
+
+```{r}
+flights %>%
+  filter(month == 3) %>%
+  select(1:5)
+```
+
+# Add new variables with mutate()
+
+Adding new columns, or *feature engineering*, is a very important part of the
+data science process. `mutate()` adds columns to the end of your data frame. To
+make it easier to see the added columns, let's create a smaller version of
+the flights data frame.
+
+```{r}
+flights_sml <- select(flights,
+                      year:day,
+                      ends_with("delay"),
+                      distance,
+                      air_time
+    
+  )
+```
+
+```{r}
+flights_sml
+```
+
+Let's compute the average speed for the flight.
+
+```{r}
+mutate(flights_sml,
+       avg_speed = distance / air_time * 60)
+```
+
+Remember, `dplyr` does not modify the input data frame. To see this:
+
+```{r}
+flights_sml
+```
+
+So, to actually add the new column to an existing data frame, we need to capture
+the result of the `mutate()` command.
+
+```{r}
+flights_sml <- mutate(flights_sml,
+       avg_speed = distance / air_time * 60)
+```
+
+With `dplyr` you can use newly created columns in the same mutate operation.
+
+```{r}
+mutate(flights_sml,
+       gain = arr_delay - dep_delay,
+       hours = air_time / 60,
+       gain_per_hour = gain / hours
+)
+```
+
+Use `transmute()` to return just the new columns.
+
+```{r}
+transmute(flights_sml,
+       gain = arr_delay - dep_delay,
+       hours = air_time / 60,
+       gain_per_hour = gain / hours
+)
+```
+
+## Useful creation functions
+
+R has numerous functions you can use with `mutate()` for creating new variables. In
+the example above we only used arithmetic operators like - and /. Of course, there
+are more operators and a slew of functions that you can also use. The only restriction is that the function must be *vectorized* - capable of operating on
+an entire vector and returning a vector.
+
+```{r}
+1:10
+sqrt(1:10)
+```
+
+You can do integer division with `%/%` and compute remainders with `%%`. These come
+in handy for things like breaking up integer times. For example, in my spreadsheet
+modeling class we convert times stored as 4 digit integers such as 1430 into a valid
+Excel time. 
+
+```{r}
+inttime <- 1430
+hour <- inttime %/% 100
+min <- inttime %% 100
+hour
+min
+```
+
+```{r}
+x = 1:100
+ggplot() + geom_point(aes(x = x, y = log(x))) +
+  geom_point(aes(x = x, y = log2(x)), color="red") + 
+  geom_point(aes(x = x, y = log10(x)), color="blue")
+```
+
+Lags and leads
+
+```{r}
+x <- 1:10
+lag(x)
+lead(x)
+lag(x, 2)
+```
+
+Cumulative and rolling aggregates
+
+```{r}
+cummin(x)
+cumsum(x)
+```
+
+Ranking
+
+```{r}
+y <- c(1, 2, 2, NA, 3, 4)
+```
+
+```{r}
+# Note how ties are handled
+min_rank(y)
+```
+
+```{r}
+# See the help on these for relationship between R and SQL
+row_number(y)
+dense_rank(y)
+percent_rank(y)
+cume_dist(y)
+```
+
+### Exercises
+
+** Ex 1 **
+
+Convert `dep_time` and `sched_dep_time` to minutes past midnight to facilitate
+computation.
+
+** Ex 2
+
+Compare `air_time` with `arr_time` - `dep_time`. What do you expect to see?
+What do you see? How to fix?
+
+** Ex 3 **
+
+Compare `dep_time`, `sched_dep_time`, and `dep_delay`. How do they relate?
+
+** Ex 4 **
+
+Find the ten most delayed flights using a ranking function. How are ties handled?
+Read the `min_rank` docs carefully.
+
+** Ex 5 **
+
+What does 1:3 + 1:10 return and why?
+
+** Ex 6 **
+
+What trig functions does R support?
+
+
+# Grouped Summaries with summarize()
+
+This is the biggie. A pivotal part of data analysis involves computing aggregates
+such as count, sum, mean, min, max, or percentiles of a numeric variable with
+possible one or more grouping variables. 
+
+What is the average arrival delay by destination airport?
+How many flights were there for each destination airport?
+What is the range of flight times to DTW?
+What is the average departure delay by hour of day and day of week?
+
+Historically, one used the **apply family of functions** for questions like this. 
+Then, HW created **plyr** which uses a consistent function naming convention to
+try to minimize the confusion caused by `apply`, `lapply`, `tapply`, `sapply` and `mapply`. 
+Most of the confusion came from the different data structures used as input and
+desired as output (i.e. vectors, lists, matrices and data frames).
+Now along comes `dplyr` which focuses on data frames for both input and output
+and provides an elegant syntax for combining functions to do SQL-like things.
+
+On its own, `summarize` collapses a data frame to a single row - i.e. it computes
+a summary statistic over an entire data frame. For example, what's the
+average departure delay.
+
+```{r}
+summarize(flights, delay = mean(dep_delay, na.rm = TRUE))
+```
+
+The `na.rm = TRUE` ensures that missing values in the `dep_delay` column
+don't cause summaries such as sums or means to return `NA`. 
+
+Multiple summarizations can be done within a single command.
+
+```{r}
+summarize(flights, 
+          mean_delay = mean(dep_delay, na.rm = TRUE),
+          max_delay = max(dep_delay, na.rm = TRUE),
+          sdev_delay = sd(dep_delay, na.rm = TRUE),
+          p95_delay = quantile(dep_delay, 0.95, na.rm = TRUE))
+```
+
+The real power of `summarize()` comes when used along with `group_by()`.
+
+```{r}
+# Create a group by object
+by_dest <- group_by(flights, dest)
+
+# Compute the summary over the group by
+summarize(by_dest, 
+          num_flights = n(),
+          mean_delay = mean(dep_delay, na.rm = TRUE),
+          max_delay = max(dep_delay, na.rm = TRUE),
+          sdev_delay = sd(dep_delay, na.rm = TRUE),
+          p95_delay = quantile(dep_delay, 0.95, na.rm = TRUE))
+```
+
+We can combine the above two commands like this...
+
+```{r}
+# Compute the summary over the group by
+summarize(group_by(flights, dest),
+          num_flights = n(),
+          mean_delay = mean(dep_delay, na.rm = TRUE),
+          max_delay = max(dep_delay, na.rm = TRUE),
+          sdev_delay = sd(dep_delay, na.rm = TRUE),
+          p95_delay = quantile(dep_delay, 0.95, na.rm = TRUE))
+```
+
+Some people find the above difficult to read and describe the process
+as having to unravel such commands from inside out. Another option is to use the pipe. 
+
+Let's use the pipe to explore the relationship between average delay and distance
+for each destination airport.
+
+Data --> Group by --> Summarize --> Filter out unwanted airports
+
+Here's the non-pipe approach.
+
+```{r}
+# Group by destination
+by_dest <- group_by(flights, dest)
+
+# Compute summary stats
+delay <- summarize(by_dest,
+                   count = n(),
+                   mean_dist = mean(distance, na.rm = TRUE),
+                   mean_delay = mean(arr_delay, na.rm = TRUE))
+
+# Filter out Honolulu and airports with less than 20 flights
+delay <- filter(delay, count > 20, dest != "HNL")
+```
+
+Notice how each intermediate quantity is saved in a variable and then
+used in the subsequent step. This can be handy when we want to keep the 
+intermediate values. Sometimes however, we just want to get to the final
+summary of interest. Furthermore, the pipe provides a way to elegantly
+chain these steps together.
+
+```{r}
+delay <- flights %>% 
+  group_by(dest) %>%
+  summarize(
+    count = n(),
+    mean_dist = mean(distance, na.rm = TRUE),
+    mean_delay = mean(arr_delay, na.rm = TRUE)) %>%
+  filter(count > 20, dest != "HNL")
+```
+
+Let's plot this.
+
+```{r}
+ggplot(data = delay, aes(x=mean_dist, y=mean_delay)) +
+  geom_point(aes(size=count), alpha = 1/3) +
+  geom_smooth(se = FALSE)
+```
+
+What happens if we forget the `na.rm = TRUE` argument.
+
+```{r}
+flights %>%
+  group_by(year, month, day) %>%
+  summarize(mean_dep_delay = mean(dep_delay))
+```
+
+Just as it does in Excel, if any `NA` values are fed into a function, the function
+returns `NA`. The `NA`s here are due to cancelled flights.
+
+```{r}
+flights %>%
+  group_by(year, month, day) %>%
+  summarize(mean_dep_delay = mean(dep_delay, na.rm = TRUE))
+```
+
+Let's create a version of `flights` in which the `dep_delay` and `arr_delay` are NOT missing. Of course R has a function for deteching NA values.
+
+```{r}
+testna <- c(3, 5, NA, 2, NA)
+testna
+is.na(testna)
+!is.na(testna)
+```
+
+
+```{r}
+flights_not_cancld <- filter(flights, !is.na(dep_delay), !is.na(arr_delay))
+```
+
+Anytime you do aggregations, it's a good idea to include a count. A giant
+mean departure delay isn't that meaningful if there's hardly any flights.
+
+```{r}
+delays <- flights_not_cancld %>%
+  group_by(tailnum) %>%
+  summarize(mean_delay = mean(dep_delay))
+
+ggplot(data = delays) + geom_freqpoly((aes(x = mean_delay)))
+```
+
+Yikes! There are some giant mean delays. However, we get no sense of
+how many flights are involved.
+
+```{r}
+delays <- flights_not_cancld %>%
+  group_by(tailnum) %>%
+  summarize(mean_delay = mean(dep_delay),
+            num_flights = n())
+
+ggplot(data = delays) + geom_point(aes(x = num_flights, y = mean_delay), alpha = 1/5)
+```
+
+Let's filter out planes with < 25 flights and show you can integrate **dplyr**
+with **ggplot2** with the pipe.
+
+```{r}
+delays <- flights_not_cancld %>%
+  group_by(tailnum) %>%
+  summarize(mean_delay = mean(dep_delay),
+            num_flights = n()) %>%
+  filter(num_flights >= 25)
+  
+delays %>%
+  ggplot(mapping = aes(x = num_flights, y = mean_delay)) + 
+    geom_point(alpha = 1/5)
+```
+
+The variation in mean delay is greatest for smaller number of flights. 
+
+Here's another example displaying a similar phenomenon involving Major League
+Baseball.
+
+```{r}
+# Convert to a tibble so it prints nicely
+batting <- as_tibble(Lahman::Batting)
+
+batters <- batting %>% 
+  group_by(playerID) %>% 
+  summarise(
+    ba = sum(H, na.rm = TRUE) / sum(AB, na.rm = TRUE),
+    ab = sum(AB, na.rm = TRUE)
+  )
+
+batters %>% 
+  filter(ab > 100) %>% 
+  ggplot(mapping = aes(x = ab, y = ba)) +
+    geom_point() + 
+    geom_smooth(se = FALSE)
+#> `geom_smooth()` using method = 'gam'
+```
+
+In addition to variation decreasing with number of at bats, those with higher
+batting averages get more at bats. Good players get to play.
+
+## Useful summary functions
+
+If you're used to doing Pivot Tables in Excel, you'll be pleasantly surprised
+how much more powerful tools like **dplyr** are in terms of the available
+aggregate functions and the flexibility of how they're used.
+
+Measures of central tendency
+
+```{r}
+flights_not_cancld %>%
+  group_by(year, month, day) %>%
+  summarise(
+    # mean arrival delay
+    mean_delay = mean(arr_delay),
+    # mean positive arrival delay
+    mean_pos_delay = mean(arr_delay[arr_delay > 0]),
+    # median delay
+    median_delay = median(arr_delay),
+    # trimmed mean
+    mean_trim_delay = mean(arr_delay, trim = 0.05)
+  )
+```
+
+Measures of spread
+
+```{r}
+flights_not_cancld %>%
+  group_by(year, month, day) %>%
+  summarise(
+    # stdev arrival delay
+    sd_delay = sd(arr_delay),
+    # MAD arrival delay
+    mad_delay = mad(arr_delay),
+    # Interquartile Range
+    iqr_delay = IQR(arr_delay),
+    # Range
+    range_delay = max(arr_delay) - min(arr_delay)
+  )
+```
+
+Measures of rank
+
+```{r}
+flights_not_cancld %>%
+  group_by(year, month, day) %>%
+  summarise(
+    # 95th percentile of delay
+    p95_delay = quantile(arr_delay, 0.05),
+    # Range
+    min_delay = min(arr_delay),
+    max_delay = max(arr_delay)
+  )
+```
+
+Measures of position
+
+```{r}
+flights_not_cancld %>%
+  group_by(year, month, day) %>%
+  summarise(
+    first_dep = first(dep_time),
+    second_dep = nth(dep_time, 2),
+    last_dep = max(dep_time)
+  )
+```
+
+The `first()` and `last()` functions are complementary to filtering by the rank of
+a row. Check out the next example carefully to unravel what it's doing. 
+
+```{r}
+flights_not_cancld %>%
+  group_by(year, month, day) %>%
+  mutate(r = min_rank(desc(dep_time))) %>%
+  filter(r %in% range(r))
+```
+
+Counts
+
+Counts are such a common analytical task that **dplyr** provides a few functions
+to help you out. Above we used the `n()` function and there's a shortcut
+called `count()` if all you want is a count by group.
+
+```{r}
+flights_not_cancld %>%
+  count(dest)
+```
+
+You can do a weighted count (i.e. a sum) like this.
+
+```{r}
+flights_not_cancld %>%
+  count(dest, wt=distance)
+```
+
+Counting non-missing values can be done with base R functions and operators.
+
+```{r}
+flights %>%
+  group_by(dest) %>%
+  summarize(
+    nonmissing = sum(!is.na(dep_time))
+  )
+```
+
+Counts and proportions of logical values
+
+Check this example out.
+
+```{r}
+logical_vec <- c(TRUE, TRUE, FALSE, TRUE, FALSE, FALSE)
+sum(logical_vec)
+mean(logical_vec)
+```
+
+So, what proportion of flights by destination are delayed by less than one hour?
+
+```{r}
+flights_not_cancld %>%
+  group_by(dest) %>%
+  summarize(
+    prop_lt_1hr = mean((dep_delay < 60))
+  )
+```
+
+## Grouping by multiple variables
+
+When you group by multiple variables, you can progressively build up sums or
+counts by subsets of the grouping variables. For example, let's create a 
+daily groupby object.
+
+```{r}
+daily <- group_by(flights, year, month, day)
+```
+
+Now we can use this count the number of flights per day.
+
+```{r}
+(per_day <- summarize(daily, numflights = n()))
+```
+
+Now we can use `per_day` to get monthly sums.
+
+```{r}
+(per_month <- summarize(per_day, numflights = sum(numflights)))
+```
+
+Be careful! This is ok for sums and counts but not for things like percentiles or
+even means (thing weighted average).
+
+There's even an `ungroup()` function to go backwards.
+
+```{r}
+daily %>%
+  ungroup() %>%
+  summarize(numflights = n())
+```
+
+### Exercises
+
+1.  Brainstorm at least 5 different ways to assess the typical delay 
+    characteristics of a group of flights. Consider the following scenarios:
+    
+    * A flight is 15 minutes early 50% of the time, and 15 minutes late 50% of 
+      the time.
+      
+    * A flight is always 10 minutes late.
+
+    * A flight is 30 minutes early 50% of the time, and 30 minutes late 50% of 
+      the time.
+      
+    * 99% of the time a flight is on time. 1% of the time it's 2 hours late.
+    
+    Which is more important: arrival delay or departure delay?
+
+1.  Come up with another approach that will give you the same output as 
+    `not_cancelled %>% count(dest)` and 
+    `not_cancelled %>% count(tailnum, wt = distance)` (without using 
+    `count()`).
+
+1.  Our definition of cancelled flights (`is.na(dep_delay) | is.na(arr_delay)`
+    ) is slightly suboptimal. Why? Which is the most important column?
+
+1.  Look at the number of cancelled flights per day. Is there a pattern?
+    Is the proportion of cancelled flights related to the average delay?
+
+1.  Which carrier has the worst delays? Challenge: can you disentangle the
+    effects of bad airports vs. bad carriers? Why/why not? (Hint: think about
+    `flights %>% group_by(carrier, dest) %>% summarise(n())`)
+
+1.  What does the `sort` argument to `count()` do. When might you use it?
+
+# Grouped Mutates (and Filters)
+
+Sometimes we want to find the worst or best members of some group.
+
+```{r}
+flights_sml %>%
+  group_by(year, month, day) %>%
+  filter(rank(desc(arr_delay)) < 10)
+```
+
+Or, find groups bigger than some threshold.
+
+```{r}
+popular_dests <- flights_not_cancld %>%
+  group_by(dest) %>%
+  filter(n() > 365)
+
+popular_dests
+```
+
+Standardize to compute per group metrics
+
 

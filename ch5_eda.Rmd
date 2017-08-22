@@ -1,0 +1,241 @@
+---
+title: "Ch5 - Exploratory Data Analysis"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# Introduction
+
+I like the authors' opening paragraphs on the role of EDA and how it's more of
+a "state of mind" than a formal process. The primary goal of EDA is to gain
+an understanding of your data and how it might relate to the questions you
+hope to answer. 
+
+Two very common questions that usually arise in EDA are:
+
+* What type of variation occurs in my variables?
+* What type of covariation occurs between my variables?
+
+The first is concerned with how individual variables vary while the second
+is all about how variables are related to each other. These are fundamental
+questions that arise in most statistical analyses whether they be inferential
+or predictive in nature.
+
+R provides many great tools for exploring variation and relationships. However,
+you must also understand principles of data visualization to be able to wield
+these tools effectively. The work of folks like Tukey, Cleveland, Tufte and Few
+are just a few places to start.
+
+Load `tidyverse` library. Install if needed.
+
+```{r}
+library(tidyverse)
+```
+
+# Variation
+
+## Visualizing distributions
+
+For categorical data, bar charts are good. The height of the bars can either be
+counts or proportions.
+
+```{r}
+ggplot(data = diamonds) + 
+  geom_bar(aes(x = cut))
+```
+
+To show proportion in each category instead of counts, we compute the
+proportions for the y aesthetic.
+
+```{r}
+ggplot(data = diamonds) + 
+  geom_bar(aes(x = cut, y = (..count..)/sum(..count..))) + 
+  ylab("Proportion")
+  
+```
+
+For continuous variables, histograms and kernel density plots can give you
+a sense of the distribution.
+
+```{r}
+ggplot(data = diamonds) +
+  geom_histogram(aes(x = carat, binwidth = 0.5))
+```
+
+To get proportions, we need to compute them for the y aesthetic.
+
+```{r}
+ggplot(data = diamonds) +
+  geom_histogram(aes(x = carat, y=..count../sum(..count..)))
+```
+
+
+A histogram involves dividing the variable of interest into bins and counting
+the number of observations in each bin. While `geom_historgram` did this automatically,
+we can do it ourselves. In fact, binning data is a relatively common data
+transformation and we'll see how to do with **dplyr** as well as with
+good base R.
+
+The **dplyr** package provides the `cut_width()` function which
+will cut the data into bins of a given size. Combine this with **dplyr**'s `count()`
+function and we can get the counts needed for the histogram.
+
+```{r}
+diamonds %>%
+  count(cut_width(carat, 0.5, boundary=0))
+```
+
+Base R provides the `cut()` function. We need to specify the breakpoints of the bins
+with a numeric vector. To match what we did with `cut_width()`, we can do
+the following.
+
+```{r}
+diamonds$caret_class <- cut(diamonds$carat, c(0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0))
+
+```
+
+```{r}
+diamonds %>%
+  count(caret_class) 
+```
+
+Same as this:
+
+```{r}
+diamonds %>%
+  group_by(caret_class) %>%
+  summarize(
+    num_diamonds = n()
+  )
+```
+
+Now put it together with the `ggplot()` function.
+
+```{r}
+diamonds %>%
+  group_by(caret_class) %>%
+  summarize(
+    num_diamonds = n()
+  ) %>%
+  ggplot() + geom_bar(aes(x = caret_class, y = num_diamonds), stat="identity")
+```
+
+The way a histogram looks can be pretty dependent on the bin size. There are a
+number of heuristic rules for choosing the "right" number of bins. These include
+*Sturges' formula*, *Doane's rule*, and the *Freedman-Diaconis choice*. You should
+look into these.
+
+An alternative to histograms is what is known as a *kernel density estimator*. Think
+of it as a smoothed version of a histogram. 
+
+```{r}
+ggplot(data = diamonds) +
+  geom_density(aes(x = carat))
+```
+
+Notice that the y-axis is NOT a probability (or a proportion). It's a density value
+and scaled so that integrating the above function (i.e. computing the area under
+the curve) results in a value of 1.0.
+
+A *frequency polygon* is a like a histogram in that it bins data and computes counts
+by bin. However, instead of bars it uses lines. By default, the y-axis will show 
+counts. If you want the density instead, you set the y aesthetic to the built in
+computed value, `..density..`.
+
+```{r}
+# Default version with counts
+ggplot(data = diamonds) +
+  geom_freqpoly(aes(x = carat))
+```
+
+```{r}
+# Density on y-axis
+ggplot(data = diamonds) +
+  geom_freqpoly(aes(x = carat, y = ..density..))
+```
+
+## Typical values
+
+You may have noticed that there were spikes at 1.0, 1.5, 2.0 carats. Hmm? Let's
+use a really small binwidth to look a little closer.
+
+```{r}
+ggplot(data = diamonds) +
+  geom_histogram(aes(x = carat), binwidth = 0.01)
+```
+
+Why does this clustering exist? Are there differences between the clusters that
+explain this? Is this due to measurement and "rounding"? Finding interestng subgroups
+or "clusters" is a common analytical task that often yields insights about your data.
+
+A famous dataset showing an interesting clustering pattern is that of intereruption 
+times for Old Faithful, a geyser in [Yellowstone National Park](https://www.nps.gov/yell/index.htm).
+
+```{r}
+ggplot(data = faithful, aes(x = eruptions)) +
+  geom_histogram(binwidth = 0.25)
+```
+
+```{r}
+summary(faithful$eruptions)
+```
+
+Notice how the mean is a pretty atypical value.
+
+## Unusual values
+
+Unusual values may be a clue to something interesting, or may simply be a data error. 
+Here's a histogram of the `y` variable in the `diamonds` dataset. It's a measure (in mm) of one of the dimensions of the diamond.
+
+```{r}
+ggplot(data = diamonds) +
+  geom_histogram(aes(x = y), binwidth = 0.5)
+```
+
+The width of the x-axis and the little blips at 0, ~30, ~60 suggest a few strange
+values. Let's find them.
+
+```{r}
+diamonds %>%
+  filter(y < 2 | y > 30)
+```
+
+What do you think? What should you do? Dropping/fixing clearly erroneous data is fine.
+Dropping data because it inconveniently doesn't fit your models or preconceptions is
+definitely NOT fine. 
+
+## Missing values
+
+Instead of simply dropping the rows with unusual values, let's replace them with NA - i.e. indicate explicitly that it's missing. We'll use R's `ifelse` function (think Excel
+IF() function).
+
+```{r}
+diamonds2 <- diamonds %>%
+  mutate(y = ifelse(y < 2 | y >30, NA, y))
+```
+
+If you wanted to modify your dataframe using base R, you might do this. Be careful,
+modifying your dataset should only be done if you can easily recover the original
+dataset. In this case, `diamonds` is a built in dataset, so that's easy.
+
+```{r}
+diamonds$y <- ifelse(diamonds$y < 2 | diamonds$y >30, NA, diamonds$y)
+```
+
+In general, R does a good job of warning you about NA values and also makes it easy
+for you to ignore them when needed.
+
+```{r}
+ggplot(data = diamonds, aes(x = x, y = y)) +
+  geom_point()
+```
+
+```{r}
+mean(diamonds$y)
+mean(diamonds$y, na.rm = TRUE)
+```
+
+### Exercises
+

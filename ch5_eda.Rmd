@@ -239,3 +239,262 @@ mean(diamonds$y, na.rm = TRUE)
 
 ### Exercises
 
+
+1.  What happens to missing values in a histogram?  What happens to missing
+    values in a bar chart? Why is there a difference?
+
+1.  What does `na.rm = TRUE` do in `mean()` and `sum()`?
+
+# Covariation
+
+Exploring distributions by category is a common analytical task (and one that is
+quite difficult in the spreadsheet world, though it's getting better). One can do
+things like faceted histograms or density plots. Overlaying such plots is not usually
+ideal since large differences in the number of observations within groups can make it
+difficult to compare distributions shapes. Let's look at a few options for comparing
+the distribution of `price` by `cut`.
+
+
+```{r}
+ggplot(diamonds) +
+  geom_histogram(aes(x = price)) +
+  facet_wrap(~cut)
+```
+
+By default, the histograms share a common scale on the y-axis. To set the scales free and make it easier to compare the shapes of the distributions, use `scales = "free"`.
+
+
+```{r}
+ggplot(diamonds) +
+  geom_histogram(aes(x = price)) +
+  facet_wrap(~cut, scales = "free")
+```
+
+Let's try it with frequency polygons.
+
+```{r}
+ggplot(diamonds) +
+  geom_freqpoly(aes(x = price, color = cut))
+```
+
+Tough to compare distributions using overlapping frequency polygon plots. Could
+facet them instead and set the y-axis to show the density instead of counts.
+
+```{r}
+ggplot(diamonds) +
+  geom_freqpoly(aes(x = price, y = ..density.., color = cut)) +
+  facet_wrap(~cut)
+```
+
+Let's put the frequency polygons on top of histograms just to see what it looks like.
+
+```{r}
+ggplot(diamonds) +
+  geom_histogram(aes(x = price, color = cut)) +
+  geom_freqpoly(aes(x = price, color = cut)) +
+  facet_wrap(~cut, scales = "free")
+```
+Another way to compare distributions is to use boxplots.
+
+```{r}
+ggplot(diamonds) +
+  geom_boxplot(aes(y = price, x = cut))
+```
+
+Kind of odd that median price for Fair exceeds median price for Ideal.
+
+I love this plot from RforDS illustrating the relationship between raw data, histograms, and
+boxplots.
+
+```{r, echo = FALSE, out.width = "100%"}
+knitr::include_graphics("images/EDA-boxplot.png")
+```
+
+Since `cut` is an ordered factor (do a `str(diamonds)` to see for yourself), the 
+order of the boxplots make sense. For factors with no intrinsic order, you can
+reorder them to make comparisons easier. 
+
+```{r}
+ggplot(data = mpg, mapping = aes(x = class, y = hwy)) +
+  geom_boxplot()
+```
+
+Let's order them by increasing median highway mpg and also flip the
+graph 90 degrees.
+
+```{r}
+ggplot(data = mpg) +
+  geom_boxplot(mapping = aes(x = reorder(class, hwy, FUN = median), y = hwy)) +
+  coord_flip()
+```
+
+### Exercises
+
+1.  Use what you've learned to improve the visualisation of the departure times
+    of cancelled vs. non-cancelled flights.
+
+1.  What variable in the diamonds dataset is most important for predicting
+    the price of a diamond? How is that variable correlated with cut?
+    Why does the combination of those two relationships lead to lower quality
+    diamonds being more expensive?
+
+1.  Install the ggstance package, and create a horizontal boxplot.
+    How does this compare to using `coord_flip()`?
+
+1.  One problem with boxplots is that they were developed in an era of 
+    much smaller datasets and tend to display a prohibitively large
+    number of "outlying values". One approach to remedy this problem is
+    the letter value plot. Install the lvplot package, and try using
+    `geom_lv()` to display the distribution of price vs cut. What
+    do you learn? How do you interpret the plots?
+
+1.  Compare and contrast `geom_violin()` with a facetted `geom_histogram()`,
+    or a coloured `geom_freqpoly()`. What are the pros and cons of each 
+    method?
+
+1.  If you have a small dataset, it's sometimes useful to use `geom_jitter()`
+    to see the relationship between a continuous and categorical variable.
+    The ggbeeswarm package provides a number of methods similar to 
+    `geom_jitter()`. List them and briefly describe what each one does.
+    
+## Two categorical values
+
+To do counts by combinations of categorical variables, we can use `geom_count`.
+
+```{r}
+ggplot(data = diamonds) +
+  geom_count(mapping = aes(x = cut, y = color))
+```
+
+Using `dplyr` to get actual counts is also possible. We can use the `count()` helper
+function with automatically groups by the variables passed to it.
+
+```{r}
+diamonds %>%
+  count(cut, color)
+```
+
+Equivalently, we can do this.
+
+```{r}
+diamonds %>%
+  group_by(cut, color) %>%
+  summarize(n = n())
+```
+To visualize the counts, we can use `geom_tile`. This is also known as a *heatmap*.
+
+```{r}
+diamonds %>%
+  count(cut, color) %>%
+  ggplot(mapping = aes(x = cut, y = color)) + geom_tile(mapping = aes(fill = n))
+```
+**Question:** Why did we use `geom_tile(mapping = aes(fill = n))`?
+
+### Exercises
+
+1.  How could you rescale the count dataset above to more clearly show
+    the distribution of cut within colour, or colour within cut?
+
+1.  Use `geom_tile()` together with dplyr to explore how average flight
+    delays vary by destination and month of year.  What makes the 
+    plot difficult to read? How could you improve it?
+
+1.  Why is it slightly better to use `aes(x = color, y = cut)` rather
+    than `aes(x = cut, y = color)` in the example above?
+    
+## Two continuous variables
+
+This is the world of scatter plots.
+
+```{r}
+ggplot(diamonds) +
+  geom_point(mapping = aes(x = carat, y = price))
+```
+
+```{r}
+ggplot(diamonds) +
+  geom_point(mapping = aes(x = carat, y = price, colour = cut))
+```
+
+As the number of points grow, scatter plots get tougher to read due to all
+the overlap. Just like we binned data in one dimension for a histogram,
+we can bin data in two dimensions.
+
+```{r}
+ggplot(diamonds) +
+  geom_bin2d(mapping = aes(x = carat, y = price))
+```
+
+Sometimes these plots are done with hexagonal bins. To do this in R,
+you must install the **hexbin** package.
+
+```{r eval=FALSE}
+install.packages("hexbin")
+```
+
+```{r}
+ggplot(diamonds) +
+  geom_hex(mapping = aes(x = carat, y = price))
+```
+Another approach is to bin one of the variables and then use that as a categorical
+variable for a set of box plots or other distribution plots.
+
+```{r}
+ggplot(data = diamonds, mapping = aes(x = carat, y = price)) +
+  geom_boxplot(mapping = aes(group = cut_width(carat, 0.1)))
+```
+
+It's hard to tell how many points each boxplot is based on. We can make the
+width of the boxes proportional to sample size with `varwidth = TRUE`. Try it.
+
+### Exercises
+
+1.  Instead of summarising the conditional distribution with a boxplot, you
+    could use a frequency polygon. What do you need to consider when using
+    `cut_width()` vs `cut_number()`? How does that impact a visualisation of
+    the 2d distribution of `carat` and `price`?
+
+1.  Visualise the distribution of carat, partitioned by price.
+
+1.  How does the price distribution of very large diamonds compare to small 
+    diamonds. Is it as you expect, or does it surprise you?
+    
+1.  Combine two of the techniques you've learned to visualise the 
+    combined distribution of cut, carat, and price.
+
+1. Two dimensional plots reveal outliers that are not visible in one 
+   dimensional plots. For example, some points in the plot below have an 
+   unusual combination of `x` and `y` values, which makes the points outliers 
+   even though their `x` and `y` values appear normal when examined separately.
+  
+    ```{r, dev = "png"}
+    ggplot(data = diamonds) +
+      geom_point(mapping = aes(x = x, y = y)) +
+      coord_cartesian(xlim = c(4, 11), ylim = c(4, 11))
+    ```
+    
+    Why is a scatterplot a better display than a binned plot for this case?
+    
+# Patterns and Models
+
+Patterns in data can suggest relationships and lead to building models that 
+help us understand these relationships, make predictions about one variable given
+the values of one or more related variables and maybe even control a variable by
+manipulating values of other variables (e.g. if a causal relationship exists between
+some variables). This is why EDA is a natural precursor to statistical or
+analytical modeling. You can think of models as providing a very compact
+representation of relationships between variables. For example, the first
+model we'll look at is linear regression. 
+
+```{r}
+mod.1 <- lm(log(price) ~ log(carat), data = diamonds)
+summary(mod.1)
+```
+
+Let's see how the actual vs predicted values look like for this simple model.
+
+```{r}
+ggplot(data = diamonds) +
+  geom_point(mapping = aes(x = log(price), y = mod.1$fitted.values))
+```
+

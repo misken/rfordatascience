@@ -1,0 +1,33 @@
+---
+title: "Ch8 - Strings with stringr"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+Need to load **stringr** explicitly since not part of core **tidyverse**.
+
+```{r}
+library(tidyverse)
+library(stringr)
+```
+
+# Introduction
+
+Both single and double quotes are fine. Can always escape a quote literal.
+
+Remember that printed representation of a string is not the same as the
+string itself.
+
+```{r}
+x <- c("\"", "\\")
+x
+```
+
+To see the strings themselves, use `writeLines()`. You get one string per line.
+
+```{r}
+writeLines(x)
+```
+

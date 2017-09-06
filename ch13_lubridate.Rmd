@@ -1,0 +1,408 @@
+---
+title: "Ch13 - Dates and Times with lubridate"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+Need to load **lubridate** explicitly since not part of core **tidyverse**.
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(nycflights13)
+```
+
+# Creating Dates/Times
+
+Tibbles refer to dates as <date>, times as <time> and datetime as <dttm>. In base R,
+datetimes are `POSIXct` and dates are `date`. There is no native time type in base R.
+The **hms** package provides a time datatype.
+
+Current datetimes are available via typical functions.
+
+```{r}
+today()
+now()
+```
+
+## From Strings
+
+Getting from strings to dates or datetimes is super common. In Excel,
+we might use the DATEVALUE() function.
+
+```{r}
+str_date <- "2017-09-23"
+```
+
+```{r}
+d1 <- as.POSIXct(str_date) # Using base R
+d1
+class(d1)
+d2 <- ymd(str_date)        # Using lubridate
+d2
+class(d2)
+```
+
+```{r}
+
+```
+
+```{r}
+str_date2 <- "5/9/2017" # Intent is May 9, 2017
+```
+
+```{r}
+as.POSIXct(str_date2) # Using base R
+mdy(str_date2)        # Using lubridate
+```
+
+Yikes! Checking out `help(as.POSIXct)` reveals that it only tries a few basic
+
+```{r}
+as.POSIXct(str_date2, format="%m/%d/%Y")
+```
+
+```{r}
+str_dt1 <- "2017-01-31 20:11:59"
+dt1 <- ymd_hms(str_dt1)
+dt1
+class(dt1)
+```
+
+```{r}
+str_dt2 <- "05-09-2017 20:11:59"
+dt2 <- mdy_hms(str_dt2)
+dt2
+class(dt2)
+```
+
+```{r}
+str_dt3 <- "05-09-2017 20:11:59"
+dt3 <- mdy_hms(str_dt2, tz = "EDT")
+dt3
+class(dt3)
+```
+
+## From Individual Components
+
+```{r}
+flights %>%
+  select(year, month, day, hour, minute)
+```
+
+To create dates or datetimes, use `make_date` or `make_datetime`.
+
+```{r}
+flights %>%
+  select(year, month, day, hour, minute) %>%
+  mutate(
+    departure = make_datetime(year, month, day, hour, minute)
+  )
+```
+
+Let's do this with the all the time fields. Since time is in 4 digit integer
+format, we'll do some modulus arithmetic to break out the hour and minute.
+We'll create a little helper function that can be used in the **dplyr**
+`mutate` clause. Notice also the checks for NA and the use of the
+`ends_with` function in the `select` clause.
+
+```{r}
+make_datetime_100 <- function(year, month, day, time) {
+  make_datetime(year, month, day, time %/% 100, time %% 100)
+}
+
+flights_dt <- flights %>% 
+  filter(!is.na(dep_time), !is.na(arr_time)) %>% 
+  mutate(
+    dep_time = make_datetime_100(year, month, day, dep_time),
+    arr_time = make_datetime_100(year, month, day, arr_time),
+    sched_dep_time = make_datetime_100(year, month, day, sched_dep_time),
+    sched_arr_time = make_datetime_100(year, month, day, sched_arr_time)
+  ) %>% 
+  select(origin, dest, ends_with("delay"), ends_with("time"))
+
+flights_dt
+```
+
+## From other types
+
+```{r}
+as_datetime(today())
+as_date(now())
+```
+
+In Unix systems, the base date or "Unix Epoch" is 1970-01-01.
+
+```{r}
+as_datetime(60 * 60 * 10)
+as_date(365 * 10 + 2) 
+```
+
+
+### Exercises
+
+1.  What happens if you parse a string that contains invalid dates?
+
+    ```{r, eval = FALSE}
+    ymd(c("2010-10-10", "bananas"))
+    ```
+
+1.  What does the `tzone` argument to `today()` do? Why is it important?
+
+1.  Use the appropriate lubridate function to parse each of the following dates:
+
+    ```{r}
+    d1 <- "January 1, 2010"
+    d2 <- "2015-Mar-07"
+    d3 <- "06-Jun-2017"
+    d4 <- c("August 19 (2015)", "July 1 (2015)")
+    d5 <- "12/30/14" # Dec 30, 2014
+    ```
+
+## Date-time components
+
+Just like Excel, we can break datetimes up to get pieces such as month or hour.
+
+
+```{r}
+datetime <- ymd_hms("2016-07-08 12:34:56")
+
+year(datetime)
+month(datetime)
+mday(datetime)
+
+yday(datetime)
+wday(datetime)
+```
+
+For `month()` and `wday()` you can set `label = TRUE` to return the abbreviated name of the month or day of the week. Set `abbr = FALSE` to return the full name.
+
+```{r}
+month(datetime, label = TRUE)
+wday(datetime, label = TRUE, abbr = FALSE)
+```
+
+```{r}
+as_date(datetime)
+```
+
+Let's count flights by date and plot.
+
+```{r}
+flights_dt %>%
+  group_by(flight_date = as_date(dep_time)) %>%
+  summarize(
+    num_flights = n()
+  ) %>%
+  ggplot() + geom_line(aes(x=flight_date, y=num_flights))
+```
+
+Day of week patterns give the cyclical pattern. Let's just look at Mondays.
+
+```{r}
+flights_dt %>%
+  filter(wday(dep_time, label = TRUE) == "Mon") %>%
+  group_by(flight_date = as_date(dep_time)) %>%
+  summarize(
+    num_flights = n()
+  ) %>%
+  ggplot() + geom_line(aes(x=flight_date, y=num_flights))
+```
+
+### Rounding
+
+Convenient floor and ceiling functions exist to enable rounding to nearest
+unit of time such as a day or week or hour.
+
+```{r}
+flights_dt %>% 
+  count(week = floor_date(dep_time, "week")) %>% 
+  ggplot(aes(week, n)) +
+    geom_line()
+```
+
+### Setting Components
+
+
+```{r}
+(datetime <- ymd_hms("2016-07-08 12:34:56"))
+
+year(datetime) <- 2020
+datetime
+month(datetime) <- 01
+datetime
+hour(datetime) <- hour(datetime) + 1
+datetime
+```
+
+Alternatively, rather than modifying in place, you can create a new date-time with `update()`. This also allows you to set multiple values at once.
+
+```{r}
+update(datetime, year = 2020, month = 2, mday = 2, hour = 2)
+```
+
+You can use `update()` to show the distribution of flights across the course of the day for every day of the year: 
+
+```{r}
+flights_dt %>% 
+  mutate(dep_hour = update(dep_time, yday = 1)) %>% 
+  ggplot(aes(dep_hour)) +
+    geom_freqpoly(binwidth = 300)
+```
+
+Setting larger components of a date to a constant is a powerful technique that allows you to explore patterns in the smaller components.
+
+### Exercises
+
+1.  How does the distribution of flight times within a day change over the 
+    course of the year?
+    
+1.  Compare `dep_time`, `sched_dep_time` and `dep_delay`. Are they consistent?
+    Explain your findings.
+
+1.  Compare `air_time` with the duration between the departure and arrival.
+    Explain your findings. (Hint: consider the location of the airport.)
+    
+1.  How does the average delay time change over the course of a day?
+    Should you use `dep_time` or `sched_dep_time`? Why?
+
+1.  On what day of the week should you leave if you want to minimise the
+    chance of a delay?
+
+1.  What makes the distribution of `diamonds$carat` and 
+    `flights$sched_dep_time` similar?
+
+1.  Confirm my hypothesis that the early departures of flights in minutes
+    20-30 and 50-60 are caused by scheduled flights that leave early. 
+    Hint: create a binary variable that tells you whether or not a flight 
+    was delayed.
+
+## Time spans
+
+The **lubridate** package provides *durations*, *periods* and *intervals*.
+
+### Durations
+
+In **lubridate**, subtracting two datetimes gives a difftime object. It's
+like a timedelta object in **pandas** (Python library).
+
+How long since the Unix epoch?
+
+```{r}
+unix_age_days <- today() - ymd("1970-01-01")
+unix_age_days
+class(unix_age_days)
+```
+
+While difftimes are ambiguous in that they might be in days, weeks, seconds,
+minutes or hours, **lubridate** provides a duration object that is 
+always in seconds.
+
+```{r}
+as.duration(unix_age_days)
+```
+
+There's a bunch of duration convenience functions.
+
+```{r}
+dminutes(1)
+dhours(1)
+ddays(1)
+dweeks(1)
+dyears(1)
+```
+
+Since durations are in exact number of seconds, you can get some
+strange results.
+
+```{r}
+one_pm <- ymd_hms("2016-03-12 13:00:00", tz = "America/New_York")
+
+one_pm
+one_pm + ddays(1)
+```
+
+### Periods
+
+Periods are designed to work more intuitively in "human" terms.
+
+```{r}
+one_pm
+one_pm + days(1)
+```
+
+Like with durations, there are a bunch of period convenience functions.
+
+```{r}
+minutes(1)
+hours(1)
+days(1)
+weeks(1)
+years(1)
+```
+
+These come in handy for adding periods to dates.
+
+```{r}
+now() + hours(12)
+```
+
+There's a few oddities in the flights_dt data with arrivals before departures.
+
+```{r}
+flights_dt %>%
+  filter(arr_time < dep_time)
+```
+
+Oops. These are overnight flights. Need to add a day to the arrival time
+of such flights. Note the clever use (by HW) of a logical multiplier.
+
+```{r}
+flights_dt <- flights_dt %>% 
+  mutate(
+    overnight = arr_time < dep_time,
+    arr_time = arr_time + days(overnight * 1),
+    sched_arr_time = sched_arr_time + days(overnight * 1)
+  )
+```
+
+Now no arrivals before departures.
+
+```{r}
+flights_dt %>% 
+  filter(overnight, arr_time < dep_time) 
+```
+
+
+### Intervals
+
+An interval is a duration with a starting point. It's used to remedy
+ambiguous things like:
+
+```{r}
+years(1) / days(1)
+```
+
+```{r}
+next_year <- today() + years(1)
+(today() %--% next_year) / ddays(1)
+```
+
+To find out how many periods fall into an interval, you need to use integer division:
+
+```{r}
+(today() %--% next_year) %/% days(1)
+```
+
+## Time Zones
+
+Dragons in here.
+
+```{r}
+Sys.timezone()
+```
+
+
+See Ch 13 in r4ds for more details.

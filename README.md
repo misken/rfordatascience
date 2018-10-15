@@ -9,3 +9,5 @@ Created a new project in a local folder called /rfordatascience.
 * the /rfordatascience did **not** exist; RStudio created it when creating the project,
 * Checked box for creating a git repository,
 * created this README.md file to document meta steps.
+
+http://r4ds.had.co.nz/

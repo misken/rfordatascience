@@ -14,6 +14,8 @@ library(forcats)
 
 ```
 
+See the following.
+
 https://simplystatistics.org/2015/07/24/stringsasfactors-an-unauthorized-biography/
 
 http://notstatschat.tumblr.com/post/124987394001/stringsasfactors-sigh

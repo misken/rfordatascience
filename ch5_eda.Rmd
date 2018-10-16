@@ -8,7 +8,7 @@ output:
 
 # Introduction
 
-I like the authors' opening paragraphs on the role of EDA and how it's more of
+I like the authors' opening paragraphs on the role of EDA and how it is more of
 a "state of mind" than a formal process. The primary goal of EDA is to gain
 an understanding of your data and how it might relate to the questions you
 hope to answer. 

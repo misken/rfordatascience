@@ -15,7 +15,7 @@ library(stringr)
 
 # Introduction
 
-Both single and double quotes are fine. Can always escape a quote literal.
+Both single and double quotes are fine. You can always escape a quote literal.
 
 Remember that printed representation of a string is not the same as the
 string itself.

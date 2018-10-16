@@ -3,12 +3,12 @@ title: "Ch3 - Data Transformation with dplyr"
 output:
   html_document:
     toc: true
-    toc_float: true
+    toc_float: false
 ---
 
 # Introduction
 
-Load `tidyverse` library. Install if needed.
+Load the `tidyverse` library. Install if needed.
 
 ```{r}
 library(tidyverse)

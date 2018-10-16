@@ -10,4 +10,6 @@ Created a new project in a local folder called /rfordatascience.
 * Checked box for creating a git repository,
 * created this README.md file to document meta steps.
 
-http://r4ds.had.co.nz/
+See the whole book: http://r4ds.had.co.nz/
+
+
